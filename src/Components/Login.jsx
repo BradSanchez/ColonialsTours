@@ -37,21 +37,48 @@ function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+  e.preventDefault();
+
+  const newErrors = validate();
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const res = await fetch("http://localhost:3001/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    // Intenta parsear JSON; si no viene JSON (p.ej. 404), evita romper
+    let data;
+    try { data = await res.json(); } catch { data = {}; }
+
+    setIsLoading(false);
+
+    if (!res.ok) {
+      setErrors({ general: data.message || "No se pudo iniciar sesión" });
       return;
     }
-    setIsLoading(true);
-    // Simula llamada a API
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log('Login exitoso:', formData);
-      // Aquí integrarías tu lógica de autenticación real
-      navigate('/');
-    }, 1500);
-  };
+
+    alert(data.message || "Bienvenido!");
+
+    if (data.role === "admin") {
+      navigate("/dashboard");
+    } else if (data.role === "user") {
+      navigate("/");
+    } else {
+      // fallback
+      navigate("/");
+    }
+  } catch (err) {
+    setIsLoading(false);
+    setErrors({ general: "Error de conexión con el servidor" });
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-gray-100 flex items-center justify-center px-4 py-8">

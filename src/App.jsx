@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Landing from '../src/Components/Landing';
 import Login from './Components/Login';
 import Register from './Components/Register';
+import Dashboard from './Components/Dashboard';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/#" element={<Landing />} />
         <Route path="/login" element={<Login />} />
          <Route path="/register" element={<Register />} />
+         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </BrowserRouter>
   );
