@@ -13,16 +13,7 @@ app.use(cors({
 app.use(express.json());
 
 // Administrador demo
-const demoAdmin = {
-  email: "demoadmin@email.com",
-  password: "123456",
-};
-
-// Usuario demo
-const demoUser = {
-  email: "demouser@email.com",
-  password: "654321",
-};
+const {demoAdmin, demoUser}= require('./server/src/demoUsers');
 
 // Ruta de login
 app.post("/login", (req, res) => {
