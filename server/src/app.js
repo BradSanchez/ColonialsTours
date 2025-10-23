@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/", routerLogin);
+app.use("/auth", routerLogin);
 
 app.get("/", (req, res) => {
   res.send("Servidor backend funcionando 🚀");
