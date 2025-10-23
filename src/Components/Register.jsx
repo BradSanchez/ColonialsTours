@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, UserPlus } from 'react-feather';
+import axios from 'axios';
 
 function Register() {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -26,6 +29,7 @@ function Register() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+    setApiError(''); // Limpiar error de API
   };
 
   const validate = () => {
@@ -56,21 +60,55 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validación del formulario
     const newErrors = validate();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    setIsLoading(true);
-    // Simula llamada a API
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log('Registro exitoso:', formData);
-      // Aquí integrarías tu lógica de registro real
-      navigate('/login');
-    }, 1500);
-  };
 
+    setIsLoading(true);
+    setApiError('');
+    setSuccessMessage('');
+
+    try {
+      // Llamada al backend
+      const response = await axios.post('http://localhost:3001/auth/register', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      console.log('Respuesta del servidor:', response.data);
+
+      // Si el registro es exitoso
+      if (response.data.success) {
+        setSuccessMessage('¡Registro exitoso! Redirigiendo...');
+        
+        
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      }
+
+    } catch (error) {
+      console.error('Error en registro:', error);
+      
+      if (error.response) {
+        // El servidor respondió con un error
+        setApiError(error.response.data.message || 'Error al registrar usuario');
+      } else if (error.request) {
+        // No hubo respuesta del servidor
+        setApiError('No se pudo conectar con el servidor. Verifica que esté corriendo.');
+      } else {
+        // Otro tipo de error
+        setApiError('Error inesperado. Intenta de nuevo.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-gray-100 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
@@ -84,6 +122,31 @@ function Register() {
             <h1 className="text-3xl font-bold text-gray-900">Crear Cuenta</h1>
             <p className="text-gray-600 mt-2">Únete a Colonials Tours</p>
           </div>
+            
+{/* ✅ AGREGA ESTO - Success Message */}
+        {successMessage && (
+          <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <span className="font-semibold">{successMessage}</span>
+            </div>
+          </div>
+        )}
+
+        {/* ❌ AGREGA ESTO - Error Message */}
+        {apiError && (
+          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span className="font-semibold">{apiError}</span>
+            </div>
+          </div>
+        )}
+
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
