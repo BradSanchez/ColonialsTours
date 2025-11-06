@@ -1,59 +1,71 @@
+import sql from 'mssql';  // ← Cambiar esta línea
+import { getPool } from '../config/database.js';
+import bcrypt from 'bcryptjs';
 
-const users = [];
-
-const controllerRegister = (req, res) => {
+const controllerRegister = async (req, res) => {
   const { name, email, password } = req.body;
 
-  // Campos requeridos
-  if (!name || !email || !password) {
-    return res.status(400).json({
+  try {
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Todos los campos son requeridos"
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "La contraseña debe tener mínimo 6 caracteres"
+      });
+    }
+
+    const pool = getPool();
+    const checkEmail = await pool.request()
+      .input('email', sql.NVarChar, email)
+      .query('SELECT id FROM Users WHERE email = @email');
+
+    if (checkEmail.recordset.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "El email ya está registrado"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pool.request()
+      .input('name', sql.NVarChar, name)
+      .input('email', sql.NVarChar, email)
+      .input('password', sql.NVarChar, hashedPassword)
+      .query(`
+        INSERT INTO Users (name, email, password)
+        OUTPUT INSERTED.id, INSERTED.name, INSERTED.email, INSERTED.role, INSERTED.createdAt
+        VALUES (@name, @email, @password)
+      `);
+
+    const newUser = result.recordset[0];
+
+    console.log('✅ Usuario registrado en BD:', newUser.email);
+
+    return res.status(201).json({
+      success: true,
+      message: "Usuario registrado exitosamente",
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error en registro:', error);
+    return res.status(500).json({
       success: false,
-      message: "Todos los campos son requeridos"
+      message: "Error del servidor al registrar usuario"
     });
   }
-
-  // Password mínimo 6 caracteres
-  if (password.length < 6) {
-    return res.status(400).json({
-      success: false,
-      message: "La contraseña debe tener mínimo 6 caracteres"
-    });
-  }
-
-  // Email ya existe
-  const emailExists = users.find(user => user.email === email);
-  if (emailExists) {
-    return res.status(409).json({
-      success: false,
-      message: "El email ya está registrado"
-    });
-  }
-
-  // crear usuario
-  const newUser = {
-    id: users.length + 1,  // ID simple
-    name,
-    email,
-    password,
-    createdAt: new Date().toISOString()
-  };
-
-  users.push(newUser);
-
-  console.log("Usuarios registrados:", users);
-
-  // exito
-  return res.status(201).json({
-    success: true,
-    message: "Usuario registrado exitosamente",
-    user: {
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      
-    },
-    totalUsers: users.length,
-  });
 };
 
 export default controllerRegister;

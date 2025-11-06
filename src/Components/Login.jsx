@@ -11,14 +11,18 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Limpia error del campo al escribir
+    
+    // Limpia errores al escribir
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+    setApiError('');
   };
 
   const validate = () => {
@@ -37,48 +41,78 @@ function Login() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const newErrors = validate();
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    return;
-  }
-
-  setIsLoading(true);
-  try {
-    const res = await fetch("http://localhost:3001/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-
-    // Intenta parsear JSON; si no viene JSON (p.ej. 404), evita romper
-    let data;
-    try { data = await res.json(); } catch { data = {}; }
-
-    setIsLoading(false);
-
-    if (!res.ok) {
-      setErrors({ general: data.message || "No se pudo iniciar sesión" });
+    // Validación del formulario
+    const newErrors = validate();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    alert(data.message || "Bienvenido!");
+    setIsLoading(true);
+    setApiError('');
+    setSuccessMessage('');
 
-    if (data.role === "admin") {
-      navigate("/dashboard");
-    } else if (data.role === "user") {
-      navigate("/");
-    } else {
-      // fallback
-      navigate("/");
+    try {
+      const res = await fetch("http://localhost:3001/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      // Parsear respuesta JSON
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        data = { success: false, message: 'Error al procesar la respuesta' };
+      }
+
+      console.log('Respuesta del servidor:', data);
+
+      // Si el servidor respondió con error
+      if (!res.ok) {
+        setApiError(data.message || "Credenciales inválidas");
+        setIsLoading(false);
+        return;
+      }
+
+      // Login exitoso
+      if (data.success) {
+        setSuccessMessage(data.message || "¡Bienvenido!");
+        
+        // Guardar token si existe (opcional)
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        
+        // Guardar datos del usuario (opcional)
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+
+        // Redirigir según el rol después de 1 segundo
+        setTimeout(() => {
+          if (data.role === "admin") {
+            navigate("/dashboard");
+          } else if (data.role === "user") {
+            navigate("/");
+          } else {
+            navigate("/");
+          }
+        }, 1000);
+      } else {
+        setApiError(data.message || "Error al iniciar sesión");
+      }
+
+    } catch (err) {
+      console.error('Error de conexión:', err);
+      setApiError("No se pudo conectar con el servidor. Verifica que esté corriendo.");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err) {
-    setIsLoading(false);
-    setErrors({ general: "Error de conexión con el servidor" });
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-gray-100 flex items-center justify-center px-4 py-8">
@@ -93,6 +127,30 @@ function Login() {
             <h1 className="text-3xl font-bold text-gray-900">Iniciar Sesión</h1>
             <p className="text-gray-600 mt-2">Bienvenido de nuevo a Colonials Tours</p>
           </div>
+
+          {/* Success Message */}
+          {successMessage && (
+            <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="font-semibold">{successMessage}</span>
+              </div>
+            </div>
+          )}
+
+          {/* API Error Message */}
+          {apiError && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span className="font-semibold">{apiError}</span>
+              </div>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
