@@ -287,12 +287,19 @@ function Profile() {
 
   const saveTour = async (tourId) => {
     try {
-      await apiService.request('/tours/save', {
-        method: 'POST',
-        body: JSON.stringify({ tourId })
-      });
+      const tour = tours.find(t => t.id === tourId);
+      if (tour?.is_saved) {
+        await apiService.request(`/tours/saved/${tourId}`, { method: 'DELETE' });
+        showToast('Tour removido de favoritos');
+      } else {
+        await apiService.request('/tours/save', {
+          method: 'POST',
+          body: JSON.stringify({ tourId })
+        });
+        showToast('Tour guardado');
+      }
+      loadTours(); // Recargar tours para actualizar estado
       loadSavedTours();
-      showToast('Tour guardado');
     } catch (error) {
       showToast('Error guardando tour', 'error');
     }
@@ -419,70 +426,10 @@ function Profile() {
   const getTotalPrice = () => cart.reduce((total, tour) => total + parseFloat(tour.price), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-8">
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-100 shadow-lg">
-        <div className="max-w-6xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {(userProfile.profileImage || user?.profile_image) ? (
-                <div className="relative">
-                  <img 
-                    src={userProfile.profileImage || user?.profile_image} 
-                    alt={user?.name}
-                    className="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-lg"
-                  />
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
-                </div>
-              ) : (
-                <div className="relative">
-                  <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <User className="text-white" size={28} />
-                  </div>
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
-                </div>
-              )}
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold text-gray-900">{user?.name}</h1>
-                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                    user?.role === 'admin' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' :
-                    user?.role === 'guide' ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white' : 
-                    'bg-gradient-to-r from-gray-400 to-gray-600 text-white'
-                  }`}>
-                    {user?.role === 'admin' ? '👑 Admin' : user?.role === 'guide' ? '🎯 Guía' : '👤 Usuario'}
-                  </span>
-                </div>
-                <p className="text-gray-500 flex items-center gap-2 mt-1">
-                  <span className="text-sm">{user?.email}</span>
-                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
-                  <span className="text-xs text-green-600 font-medium">En línea</span>
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {user?.role === 'admin' && (
-                <a 
-                  href="/admin" 
-                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-                >
-                  <TrendingUp size={16} />
-                  Dashboard
-                </a>
-              )}
-              <button
-                onClick={logout}
-                className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium transition-colors flex items-center gap-2"
-              >
-                <X size={16} />
-                Cerrar Sesión
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Navigation */}
@@ -550,9 +497,13 @@ function Profile() {
                     </button>
                     <button
                       onClick={() => saveTour(tour.id)}
-                      className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                      className={`p-3 border rounded-xl transition-colors ${
+                        tour.is_saved
+                          ? 'border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-100'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
                     >
-                      <Bookmark size={18} />
+                      <Bookmark size={18} fill={tour.is_saved ? 'currentColor' : 'none'} />
                     </button>
                   </div>
                 </div>

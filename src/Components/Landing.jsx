@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Footer from './Footer';
+
 import MapPreview from './MapPreview';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
@@ -27,7 +27,6 @@ const DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 function Landing() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [tours, setTours] = useState([]);
   const [stats, setStats] = useState({ totalTours: 0, totalUsers: 0 });
 
@@ -53,16 +52,14 @@ function Landing() {
 
   const loadStats = async () => {
     try {
-      const response = await apiService.request('/admin/stats');
-      setStats(response.stats || { totalTours: 0, totalUsers: 0 });
+      const response = await apiService.request('/tours');
+      setStats({ 
+        totalTours: response.tours?.length || 0, 
+        totalUsers: 0 
+      });
     } catch (error) {
       console.error('Error loading stats');
     }
-  };
-
-  // Mobile menu toggle
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
   // Map data
@@ -74,73 +71,7 @@ function Landing() {
 
   return (
     <div className="font-sans bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white shadow-lg">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex justify-between">
-            <div className="flex space-x-7">
-              <div>
-                <a href="#" className="flex items-center py-4 px-2">
-                  <Map className="text-amber-600 mr-2" size={24} />
-                  <span className="font-semibold text-gray-500 text-lg">Zona Colonial</span>
-                </a>
-              </div>
-              <div className="hidden md:flex items-center space-x-1">
-                <a href="/" className="py-4 px-2 text-amber-600 border-b-4 border-amber-600 font-medium">
-                  Inicio
-                </a>
-                <a href="/tours" className="py-4 px-2 text-gray-500 font-medium hover:text-amber-600 transition duration-300">
-                  Tours
-                </a>
-                <a href="/mapa" className="py-4 px-2 text-gray-500 font-medium hover:text-amber-600 transition duration-300">
-                  Mapa
-                </a>
-                <a href="#" className="py-4 px-2 text-gray-500 font-medium hover:text-amber-600 transition duration-300">
-                  Lugares
-                </a>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center space-x-3">
-              <a href="/login" className="py-2 px-2 font-medium text-gray-500 rounded hover:bg-amber-500 hover:text-white transition duration-300">
-                Iniciar Sesión
-              </a>
-              <a href="/register" className="py-2 px-2 font-medium text-white bg-amber-600 rounded hover:bg-amber-500 transition duration-300">
-                Registrarse
-              </a>
-            </div>
-            <div className="md:hidden flex items-center">
-              <button className="outline-none mobile-menu-button" onClick={toggleMobileMenu}>
-                <Menu className="w-6 h-6 text-gray-500" />
-              </button>
-            </div>
-          </div>
-        </div>
-        {/* Mobile menu */}
-        <div className={`${isMobileMenuOpen ? 'block' : 'hidden'} mobile-menu`}>
-          <ul>
-            <li className="active">
-              <a href="#" className="block text-sm px-2 py-4 text-white bg-amber-600 font-semibold">
-                Inicio
-              </a>
-            </li>
-            <li>
-              <a href="/tours" className="block text-sm px-2 py-4 hover:bg-amber-500 transition duration-300">
-                Tours
-              </a>
-            </li>
-            <li>
-              <a href="/mapa" className="block text-sm px-2 py-4 hover:bg-amber-500 transition duration-300">
-                Mapa
-              </a>
-            </li>
-            <li>
-              <a href="#" className="block text-sm px-2 py-4 hover:bg-amber-500 transition duration-300">
-                Lugares
-              </a>
-            </li>
-          </ul>
-        </div>
-      </nav>
+
 
       {/* Hero Section */}
       <div className="hero-image py-20 px-4">
@@ -366,8 +297,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
-    <Footer/>
+
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '../context/AuthContext';
-import { TrendingUp, Users, MapPin, DollarSign, Trash2, Eye, Check, X, Plus, Edit3, User, Settings } from 'react-feather';
+import { TrendingUp, Users, MapPin, DollarSign, Trash2, Eye, Check, X, Plus, Edit3, User, Settings, Star, MessageSquare, Shield, Activity } from 'react-feather';
 import ImageUpload from './ImageUpload';
 import apiService from '../services/api';
 
@@ -55,6 +55,17 @@ const AdminDashboard = () => {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [toast, setToast] = useState(null);
   const [editingTour, setEditingTour] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [footerSettings, setFooterSettings] = useState({
+    companyName: 'Colonials Tours',
+    description: 'Descubre la historia y cultura de la Zona Colonial con nuestros tours especializados.',
+    phone: '+1 (809) 555-0123',
+    email: 'info@colonialstours.com',
+    address: 'Calle Las Damas, Zona Colonial, Santo Domingo',
+    facebook: 'https://facebook.com/colonialstours',
+    instagram: 'https://instagram.com/colonialstours',
+    twitter: 'https://twitter.com/colonialstours'
+  });
   const [adminProfile, setAdminProfile] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -97,6 +108,54 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error('Error cargando perfil admin');
+    }
+  };
+
+  const loadReviews = async () => {
+    setLoading(true);
+    try {
+      // Simulando datos de reseñas
+      setReviews([
+        { id: 1, user: 'María García', tour: 'Tour Colonial', rating: 5, comment: 'Excelente experiencia', date: '2024-01-15', status: 'approved' },
+        { id: 2, user: 'Carlos López', tour: 'Tour Gastronómico', rating: 4, comment: 'Muy buena comida', date: '2024-01-14', status: 'pending' },
+        { id: 3, user: 'Ana Martín', tour: 'Tour Nocturno', rating: 3, comment: 'Podría mejorar', date: '2024-01-13', status: 'approved' }
+      ]);
+    } catch (error) {
+      console.error('Error loading reviews');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFooterSettings = async () => {
+    try {
+      const saved = localStorage.getItem('footerSettings');
+      if (saved) {
+        setFooterSettings(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Error loading footer settings');
+    }
+  };
+
+  const updateFooterSettings = async (e) => {
+    e.preventDefault();
+    try {
+      localStorage.setItem('footerSettings', JSON.stringify(footerSettings));
+      showToast('Configuración del footer actualizada');
+    } catch (error) {
+      showToast('Error actualizando configuración', 'error');
+    }
+  };
+
+  const moderateReview = async (reviewId, action) => {
+    try {
+      setReviews(prev => prev.map(review => 
+        review.id === reviewId ? { ...review, status: action } : review
+      ));
+      showToast(`Reseña ${action === 'approved' ? 'aprobada' : 'rechazada'}`);
+    } catch (error) {
+      showToast('Error moderando reseña', 'error');
     }
   };
 
@@ -268,6 +327,8 @@ const AdminDashboard = () => {
     if (activeTab === 'users') loadUsers();
     if (activeTab === 'tours') loadTours();
     if (activeTab === 'purchases') loadPurchases();
+    if (activeTab === 'reviews') loadReviews();
+    if (activeTab === 'settings') loadFooterSettings();
   }, [activeTab]);
 
   return (
@@ -350,12 +411,14 @@ const AdminDashboard = () => {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-8 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-white/20">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-8">
           {[
-            { id: 'stats', label: 'Estadísticas', icon: TrendingUp },
+            { id: 'stats', label: 'Dashboard', icon: TrendingUp },
             { id: 'users', label: 'Usuarios', icon: Users },
             { id: 'tours', label: 'Tours', icon: MapPin },
-            { id: 'purchases', label: 'Compras', icon: DollarSign },
+            { id: 'purchases', label: 'Reservas', icon: DollarSign },
+            { id: 'reviews', label: 'Reseñas', icon: Star },
+            { id: 'settings', label: 'Configuración', icon: Settings },
             { id: 'profile', label: 'Mi Perfil', icon: User }
           ].map(tab => {
             const Icon = tab.icon;
@@ -363,14 +426,14 @@ const AdminDashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
+                className={`px-3 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
                   activeTab === tab.id 
                     ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                    : 'bg-white/50 text-gray-600 hover:text-gray-900 hover:bg-white/70'
                 }`}
               >
-                <Icon size={18} />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <Icon size={16} />
+                <span className="text-xs">{tab.label}</span>
               </button>
             );
           })}
@@ -537,39 +600,139 @@ const AdminDashboard = () => {
 
           {activeTab === 'purchases' && (
             <div>
-              <h3 className="text-lg font-bold mb-4">Historial de Compras</h3>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">Gestión de Reservas</h3>
+                  <p className="text-gray-500 mt-1">Administra todas las reservas y compras</p>
+                </div>
+              </div>
               {loading ? (
                 <p>Cargando...</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2">ID</th>
-                        <th className="text-left p-2">Usuario</th>
-                        <th className="text-left p-2">Total</th>
-                        <th className="text-left p-2">Estado</th>
-                        <th className="text-left p-2">Fecha</th>
+                      <tr className="border-b-2 border-gray-100">
+                        <th className="text-left p-4 font-semibold text-gray-700">Reserva</th>
+                        <th className="text-left p-4 font-semibold text-gray-700">Usuario</th>
+                        <th className="text-left p-4 font-semibold text-gray-700">Tours</th>
+                        <th className="text-left p-4 font-semibold text-gray-700">Total</th>
+                        <th className="text-left p-4 font-semibold text-gray-700">Estado</th>
+                        <th className="text-left p-4 font-semibold text-gray-700">Fecha</th>
+                        <th className="text-left p-4 font-semibold text-gray-700">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {purchases.map(purchase => (
-                        <tr key={purchase.id} className="border-b">
-                          <td className="p-2">#{purchase.id}</td>
-                          <td className="p-2">{purchase.user_name}</td>
-                          <td className="p-2">${purchase.total}</td>
-                          <td className="p-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
+                        <tr key={purchase.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                          <td className="p-4">
+                            <span className="font-medium text-gray-900">#{purchase.id}</span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <User size={14} className="text-blue-600" />
+                              </div>
+                              <span className="text-gray-700">{purchase.user_name}</span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <span className="text-sm text-gray-600">{purchase.tour_titles}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className="font-semibold text-green-600">${purchase.total}</span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                               purchase.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                             }`}>
-                              {purchase.status}
+                              {purchase.status === 'completed' ? 'Completada' : 'Pendiente'}
                             </span>
                           </td>
-                          <td className="p-2">{new Date(purchase.created_at).toLocaleDateString()}</td>
+                          <td className="p-4">
+                            <span className="text-gray-500 text-sm">{new Date(purchase.created_at).toLocaleDateString()}</span>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex gap-2">
+                              <button className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+                                <Eye size={16} />
+                              </button>
+                              <button className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-colors">
+                                <Check size={16} />
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'reviews' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">Moderación de Reseñas</h3>
+                  <p className="text-gray-500 mt-1">Revisa y modera comentarios de usuarios</p>
+                </div>
+              </div>
+              {loading ? (
+                <p>Cargando...</p>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map(review => (
+                    <div key={review.id} className="bg-white/50 backdrop-blur-sm p-6 rounded-2xl border border-white/20">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                            <User size={20} className="text-gray-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{review.user}</h4>
+                            <p className="text-sm text-gray-500">{review.tour}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex text-yellow-400">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} size={16} fill={i < review.rating ? 'currentColor' : 'none'} />
+                            ))}
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            review.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            review.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {review.status === 'approved' ? 'Aprobada' :
+                             review.status === 'pending' ? 'Pendiente' : 'Rechazada'}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-gray-700 mb-4">{review.comment}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">{new Date(review.date).toLocaleDateString()}</span>
+                        {review.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => moderateReview(review.id, 'approved')}
+                              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2 text-sm"
+                            >
+                              <Check size={14} /> Aprobar
+                            </button>
+                            <button
+                              onClick={() => moderateReview(review.id, 'rejected')}
+                              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2 text-sm"
+                            >
+                              <X size={14} /> Rechazar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -705,6 +868,114 @@ const AdminDashboard = () => {
                       <Settings size={18} />
                     )}
                     {loading ? 'Guardando...' : 'Guardar Cambios'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div>
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-gray-900">Configuración del Sitio</h3>
+                <p className="text-gray-500 mt-1">Gestiona la información que aparece en el footer</p>
+              </div>
+              
+              <form onSubmit={updateFooterSettings} className="space-y-6">
+                <div className="bg-white/50 backdrop-blur-sm p-6 rounded-2xl border border-white/20">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Información de la Empresa</h4>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de la Empresa</label>
+                      <input
+                        type="text"
+                        value={footerSettings.companyName}
+                        onChange={(e) => setFooterSettings({...footerSettings, companyName: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
+                      <input
+                        type="tel"
+                        value={footerSettings.phone}
+                        onChange={(e) => setFooterSettings({...footerSettings, phone: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <input
+                        type="email"
+                        value={footerSettings.email}
+                        onChange={(e) => setFooterSettings({...footerSettings, email: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
+                      <input
+                        type="text"
+                        value={footerSettings.address}
+                        onChange={(e) => setFooterSettings({...footerSettings, address: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Descripción</label>
+                    <textarea
+                      value={footerSettings.description}
+                      onChange={(e) => setFooterSettings({...footerSettings, description: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      rows="3"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white/50 backdrop-blur-sm p-6 rounded-2xl border border-white/20">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4">Redes Sociales</h4>
+                  <div className="grid md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Facebook</label>
+                      <input
+                        type="url"
+                        value={footerSettings.facebook}
+                        onChange={(e) => setFooterSettings({...footerSettings, facebook: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="https://facebook.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
+                      <input
+                        type="url"
+                        value={footerSettings.instagram}
+                        onChange={(e) => setFooterSettings({...footerSettings, instagram: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="https://instagram.com/..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Twitter</label>
+                      <input
+                        type="url"
+                        value={footerSettings.twitter}
+                        onChange={(e) => setFooterSettings({...footerSettings, twitter: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="https://twitter.com/..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                  >
+                    <Settings size={18} />
+                    Guardar Configuración
                   </button>
                 </div>
               </form>
