@@ -1,21 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '../context/AuthContext';
-import { User, ShoppingCart, MapPin, Plus, Trash2, DollarSign, Heart, Settings, Clock, CreditCard, Check, X, Edit3 } from 'react-feather';
+import { User, ShoppingCart, MapPin, Plus, Trash2, DollarSign, Heart, Settings, Clock, CreditCard, Check, X, Edit3, TrendingUp, Bookmark } from 'react-feather';
 import apiService from '../services/api';
 import ImageUpload from './ImageUpload';
 
 // Componente de notificación moderna
-const Toast = ({ message, type, onClose }) => (
-  <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-3 ${
-    type === 'success' ? 'bg-green-500 text-white' : 
-    type === 'error' ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'
-  }`}>
-    {type === 'success' && <Check size={20} />}
-    {type === 'error' && <X size={20} />}
-    <span>{message}</span>
-    <button onClick={onClose} className="ml-2 hover:opacity-70">×</button>
-  </div>
-);
+const Toast = ({ message, type, onClose }) => {
+  const [isVisible, setIsVisible] = React.useState(false);
+  
+  React.useEffect(() => {
+    setIsVisible(true);
+  }, []);
+  
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 300);
+  };
+  
+  return (
+    <div className={`fixed top-4 right-4 z-50 transform transition-all duration-300 ${
+      isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
+    }`}>
+      <div className={`p-4 rounded-xl shadow-2xl flex items-center gap-3 min-w-80 backdrop-blur-sm border ${
+        type === 'success' 
+          ? 'bg-green-50 border-green-200 text-green-800' 
+          : type === 'error' 
+          ? 'bg-red-50 border-red-200 text-red-800' 
+          : 'bg-blue-50 border-blue-200 text-blue-800'
+      }`}>
+        <div className={`p-1 rounded-full ${
+          type === 'success' ? 'bg-green-100' : type === 'error' ? 'bg-red-100' : 'bg-blue-100'
+        }`}>
+          {type === 'success' && <Check size={16} className="text-green-600" />}
+          {type === 'error' && <X size={16} className="text-red-600" />}
+          {type === 'info' && <Check size={16} className="text-blue-600" />}
+        </div>
+        <span className="font-medium flex-1">{message}</span>
+        <button 
+          onClick={handleClose} 
+          className="ml-2 p-1 rounded-full hover:bg-black hover:bg-opacity-10 transition-colors"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // Modal de pago
 const PaymentModal = ({ isOpen, onClose, total, onConfirm }) => {
@@ -144,6 +174,7 @@ function Profile() {
   });
   
   const [editingTour, setEditingTour] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -157,9 +188,7 @@ function Profile() {
     loadSavedTours();
     loadPurchaseHistory();
     loadUserProfile();
-    if (user?.role === 'guide') {
-      loadMyTours();
-    }
+    loadMyTours();
   }, [user]);
 
   const loadUserProfile = async () => {
@@ -223,7 +252,7 @@ function Profile() {
   };
 
   const loadMyTours = async () => {
-    if (!user || user.role !== 'guide') return;
+    if (!user) return;
     try {
       const response = await apiService.request('/tours/my-tours');
       setMyTours(response.tours || []);
@@ -303,9 +332,10 @@ function Profile() {
     try {
       await apiService.request('/tours', {
         method: 'POST',
-        body: JSON.stringify(editingTour)
+        body: JSON.stringify(editingTour || newTour)
       });
       setEditingTour(null);
+      setNewTour({ title: '', description: '', price: '', duration: '', location: '', imageUrl: '' });
       loadTours();
       loadMyTours();
       showToast('Tour creado exitosamente');
@@ -320,9 +350,13 @@ function Profile() {
     e.preventDefault();
     setLoading(true);
     try {
+      const tourData = {
+        ...editingTour,
+        imageUrl: editingTour.imageUrl || editingTour.image_url
+      };
       await apiService.request(`/tours/${editingTour.id}`, {
         method: 'PUT',
-        body: JSON.stringify(editingTour)
+        body: JSON.stringify(tourData)
       });
       setEditingTour(null);
       loadTours();
@@ -336,19 +370,25 @@ function Profile() {
   };
 
   const deleteTour = async (tourId) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este tour?')) return;
-    
-    setLoading(true);
-    try {
-      await apiService.request(`/tours/${tourId}`, { method: 'DELETE' });
-      loadTours();
-      loadMyTours();
-      showToast('Tour eliminado exitosamente');
-    } catch (error) {
-      showToast('Error eliminando tour', 'error');
-    } finally {
-      setLoading(false);
-    }
+    setConfirmDialog({
+      title: '¿Eliminar Tour?',
+      message: 'Esta acción no se puede deshacer. El tour será eliminado permanentemente.',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await apiService.request(`/tours/${tourId}`, { method: 'DELETE' });
+          loadTours();
+          loadMyTours();
+          showToast('Tour eliminado exitosamente');
+        } catch (error) {
+          showToast('Error eliminando tour', 'error');
+        } finally {
+          setLoading(false);
+        }
+        setConfirmDialog(null);
+      },
+      onCancel: () => setConfirmDialog(null)
+    });
   };
 
   const updateProfile = async (e) => {
@@ -374,23 +414,7 @@ function Profile() {
     }
   };
 
-  const becomeGuide = async () => {
-    setLoading(true);
-    try {
-      const response = await apiService.request('/user/become-guide', { method: 'POST' });
-      if (response.success) {
-        showToast('¡Ahora eres un guía turístico!');
-        // Actualizar el usuario en el contexto
-        const updatedUser = { ...user, role: 'guide' };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        window.location.reload();
-      }
-    } catch (error) {
-      showToast('Error actualizando rol', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const getTotalPrice = () => cart.reduce((total, tour) => total + parseFloat(tour.price), 0);
 
@@ -399,69 +423,96 @@ function Profile() {
       {toast && <Toast {...toast} onClose={() => setToast(null)} />}
       
       {/* Header */}
-      <div className="bg-white border-b border-gray-100">
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-100 shadow-lg">
         <div className="max-w-6xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {(userProfile.profileImage || user?.profile_image) ? (
-                <img 
-                  src={userProfile.profileImage || user?.profile_image} 
-                  alt={user?.name}
-                  className="w-12 h-12 rounded-xl object-cover border-2 border-white shadow-sm"
-                />
+                <div className="relative">
+                  <img 
+                    src={userProfile.profileImage || user?.profile_image} 
+                    alt={user?.name}
+                    className="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-lg"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+                </div>
               ) : (
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-sm">
-                  <User className="text-white" size={24} />
+                <div className="relative">
+                  <div className="w-14 h-14 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <User className="text-white" size={28} />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
                 </div>
               )}
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">{user?.name}</h1>
-                <p className="text-gray-500 flex items-center gap-2">
-                  {user?.email}
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    user?.role === 'guide' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-900">{user?.name}</h1>
+                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                    user?.role === 'admin' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' :
+                    user?.role === 'guide' ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white' : 
+                    'bg-gradient-to-r from-gray-400 to-gray-600 text-white'
                   }`}>
-                    {user?.role === 'guide' ? 'Guía' : 'Usuario'}
+                    {user?.role === 'admin' ? '👑 Admin' : user?.role === 'guide' ? '🎯 Guía' : '👤 Usuario'}
                   </span>
+                </div>
+                <p className="text-gray-500 flex items-center gap-2 mt-1">
+                  <span className="text-sm">{user?.email}</span>
+                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                  <span className="text-xs text-green-600 font-medium">En línea</span>
                 </p>
               </div>
             </div>
-            <button
-              onClick={logout}
-              className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              Cerrar Sesión
-            </button>
+            <div className="flex items-center gap-3">
+              {user?.role === 'admin' && (
+                <a 
+                  href="/admin" 
+                  className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                >
+                  <TrendingUp size={16} />
+                  Dashboard
+                </a>
+              )}
+              <button
+                onClick={logout}
+                className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-medium transition-colors flex items-center gap-2"
+              >
+                <X size={16} />
+                Cerrar Sesión
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Navigation */}
-        <div className="flex gap-1 mb-8 bg-gray-100 p-1 rounded-xl">
+        <div className="flex gap-2 mb-8 bg-white/50 backdrop-blur-sm p-2 rounded-2xl border border-white/20 shadow-lg">
           {[
-            { id: 'tours', label: 'Explorar', icon: MapPin },
-            { id: 'cart', label: `Carrito${cart.length > 0 ? ` (${cart.length})` : ''}`, icon: ShoppingCart },
-            { id: 'saved', label: 'Guardados', icon: Heart },
-            { id: 'history', label: 'Historial', icon: Clock },
-            { id: 'profile', label: 'Perfil', icon: Settings },
-            ...(user?.role === 'guide' ? [{ id: 'guide', label: 'Gestionar Tours', icon: Plus }] : [])
+            { id: 'tours', label: 'Explorar', icon: MapPin, color: 'from-green-500 to-emerald-600' },
+            { id: 'cart', label: `Carrito${cart.length > 0 ? ` (${cart.length})` : ''}`, icon: ShoppingCart, color: 'from-blue-500 to-cyan-600', badge: cart.length },
+            { id: 'saved', label: 'Guardados', icon: Heart, color: 'from-pink-500 to-rose-600' },
+            { id: 'history', label: 'Historial', icon: Clock, color: 'from-purple-500 to-violet-600' },
+            { id: 'profile', label: 'Perfil', icon: Settings, color: 'from-gray-500 to-slate-600' },
+            { id: 'manage', label: 'Mis Tours', icon: Plus, color: 'from-orange-500 to-amber-600' }
           ].map(tab => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all ${
+                className={`relative flex-1 px-4 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-200 ${
                   activeTab === tab.id 
-                    ? 'bg-white text-orange-600 shadow-sm' 
-                    : tab.id === 'guide' && user?.role === 'guide'
-                    ? 'text-blue-600 hover:text-blue-700 bg-blue-50'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? `bg-gradient-to-r ${tab.color} text-white shadow-lg transform scale-105` 
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white/70'
                 }`}
               >
                 <Icon size={18} />
                 <span className="hidden sm:inline">{tab.label}</span>
+                {tab.badge > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -501,7 +552,7 @@ function Profile() {
                       onClick={() => saveTour(tour.id)}
                       className="p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
                     >
-                      <Heart size={18} />
+                      <Bookmark size={18} />
                     </button>
                   </div>
                 </div>
@@ -718,39 +769,20 @@ function Profile() {
                   )}
                   {loading ? 'Guardando...' : 'Guardar'}
                 </button>
-                
-                {user?.role !== 'guide' && (
-                  <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <h3 className="font-semibold text-blue-900 mb-2">¿Quieres ser guía turístico?</h3>
-                    <p className="text-blue-700 text-sm mb-4">Como guía podrás crear y gestionar tus propios tours, establecer precios y recibir reservas.</p>
-                    <button
-                      type="button"
-                      onClick={becomeGuide}
-                      disabled={loading}
-                      className="bg-blue-500 text-white px-6 py-3 rounded-xl font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center gap-2"
-                    >
-                      {loading ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                        <Plus size={18} />
-                      )}
-                      {loading ? 'Procesando...' : 'Convertirme en Guía'}
-                    </button>
-                  </div>
-                )}
+
               </div>
             </form>
           </div>
         )}
 
-        {/* Gestión de Tours (Solo Guías) */}
-        {activeTab === 'guide' && user?.role === 'guide' && (
+        {/* Gestión de Tours */}
+        {activeTab === 'manage' && (
           <div className="space-y-8">
-            {/* Bienvenida para nuevos guías */}
+            {/* Bienvenida para nuevos usuarios */}
             {myTours.length === 0 && (
               <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 text-white">
-                <h2 className="text-2xl font-bold mb-2">¡Bienvenido, Guía!</h2>
-                <p className="text-blue-100 mb-4">Ahora puedes crear y gestionar tus propios tours. Comienza creando tu primer tour para empezar a recibir reservas.</p>
+                <h2 className="text-2xl font-bold mb-2">¡Crea tu primer tour!</h2>
+                <p className="text-blue-100 mb-4">Comparte tus lugares favoritos y experiencias únicas creando tours personalizados.</p>
                 <button
                   onClick={() => setEditingTour({ title: '', description: '', price: '', duration: '', location: '', imageUrl: '' })}
                   className="bg-white text-blue-600 px-6 py-3 rounded-xl font-medium hover:bg-blue-50 transition-colors flex items-center gap-2"
@@ -813,7 +845,7 @@ function Profile() {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => setEditingTour(tour)}
+                          onClick={() => setEditingTour({...tour, imageUrl: tour.image_url})}
                           className="flex-1 bg-blue-50 text-blue-600 py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
                         >
                           <Edit3 size={16} /> Editar
@@ -946,6 +978,35 @@ function Profile() {
         total={getTotalPrice()}
         onConfirm={handlePayment}
       />
+      
+      {/* Modal de Confirmación */}
+      {confirmDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <X className="text-red-600" size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">{confirmDialog.title}</h3>
+              <p className="text-gray-600">{confirmDialog.message}</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={confirmDialog.onCancel}
+                className="flex-1 py-3 px-4 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmDialog.onConfirm}
+                className="flex-1 py-3 px-4 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

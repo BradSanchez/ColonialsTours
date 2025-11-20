@@ -5,6 +5,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import 'leaflet/dist/leaflet.css';
 import { Map, Menu, Compass, ArrowRight, Star, Mail, Phone, MapPin, Facebook, Instagram, Twitter, Youtube } from 'react-feather';
+import apiService from '../services/api';
 
 import '../../src/App'
 
@@ -27,6 +28,8 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 function Landing() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [tours, setTours] = useState([]);
+  const [stats, setStats] = useState({ totalTours: 0, totalUsers: 0 });
 
   // Initialize AOS
   useEffect(() => {
@@ -35,7 +38,27 @@ function Landing() {
       easing: 'ease-in-out',
       once: true,
     });
+    loadTours();
+    loadStats();
   }, []);
+
+  const loadTours = async () => {
+    try {
+      const response = await apiService.request('/tours');
+      setTours(response.tours?.slice(0, 3) || []);
+    } catch (error) {
+      console.error('Error loading tours');
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const response = await apiService.request('/admin/stats');
+      setStats(response.stats || { totalTours: 0, totalUsers: 0 });
+    } catch (error) {
+      console.error('Error loading stats');
+    }
+  };
 
   // Mobile menu toggle
   const toggleMobileMenu = () => {
@@ -63,7 +86,7 @@ function Landing() {
                 </a>
               </div>
               <div className="hidden md:flex items-center space-x-1">
-                <a href="#" className="py-4 px-2 text-amber-600 border-b-4 border-amber-600 font-medium">
+                <a href="/" className="py-4 px-2 text-amber-600 border-b-4 border-amber-600 font-medium">
                   Inicio
                 </a>
                 <a href="/tours" className="py-4 px-2 text-gray-500 font-medium hover:text-amber-600 transition duration-300">
@@ -211,72 +234,40 @@ function Landing() {
       {/* Tours Section */}
       <section className="max-w-6xl mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-800">Tours recomendados</h2>
+          <h2 className="text-3xl font-bold text-gray-800">Tours disponibles ({stats.totalTours})</h2>
           <a href="/tours" className="text-amber-600 font-medium inline-flex items-center">
             Ver todos <ArrowRight className="ml-1 w-4 h-4" />
           </a>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden" data-aos="fade-up">
-            <img
-              src="https://cdn.abacus.ai/images/ef0d2c8f-7280-418c-ab46-34604952f390.png"
-              alt="Tour Histórico en Zona Colonial, Santo Domingo"
-              className="w-full h-48 object-cover"
-            />
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-xl font-semibold text-gray-800">Tour Histórico Completo</h3>
-                <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded">3 horas</span>
-              </div>
-              <p className="text-gray-600 mb-4">Recorre los principales monumentos históricos con un guía experto.</p>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-800">$35 USD</span>
-                <a href="#" className="text-white bg-amber-600 hover:bg-amber-700 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center">
-                  Reservar
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden" data-aos="fade-up" data-aos-delay="100">
-            <img
-              src="https://cdn.abacus.ai/images/b0d3ed17-1d20-4396-865a-39b3bd7ef7c3.png"
-              alt="Tour Gastronómico en Zona Colonial, Santo Domingo"
-              className="w-full h-48 object-cover"
-            />
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-xl font-semibold text-gray-800">Tour Gastronómico</h3>
-                <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded">2.5 horas</span>
-              </div>
-              <p className="text-gray-600 mb-4">Degusta la auténtica cocina dominicana en los mejores restaurantes locales.</p>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-800">$45 USD</span>
-                <a href="#" className="text-white bg-amber-600 hover:bg-amber-700 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center">
-                  Reservar
-                </a>
+          {tours.length > 0 ? tours.map((tour, index) => (
+            <div key={tour.id} className="bg-white rounded-lg shadow-md overflow-hidden" data-aos="fade-up" data-aos-delay={index * 100}>
+              {tour.image_url && (
+                <img
+                  src={tour.image_url}
+                  alt={tour.title}
+                  className="w-full h-48 object-cover"
+                />
+              )}
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-xl font-semibold text-gray-800">{tour.title}</h3>
+                  <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded">{tour.duration}</span>
+                </div>
+                <p className="text-gray-600 mb-4">{tour.description}</p>
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-gray-800">${tour.price}</span>
+                  <a href="/login" className="text-white bg-amber-600 hover:bg-amber-700 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center">
+                    Reservar
+                  </a>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden" data-aos="fade-up" data-aos-delay="200">
-            <img
-              src="https://cdn.abacus.ai/images/968eb585-5414-40b7-8268-0f477ae7de61.png"
-              alt="Tour Nocturno en Zona Colonial, Santo Domingo"
-              className="w-full h-48 object-cover"
-            />
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-xl font-semibold text-gray-800">Tour Nocturno</h3>
-                <span className="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-0.5 rounded">2 horas</span>
-              </div>
-              <p className="text-gray-600 mb-4">Descubre la magia de la Zona Colonial iluminada por la noche.</p>
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-800">$30 USD</span>
-                <a href="#" className="text-white bg-amber-600 hover:bg-amber-700 font-medium rounded-lg text-sm px-3 py-2 text-center inline-flex items-center">
-                  Reservar
-                </a>
-              </div>
+          )) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-gray-500 text-lg">No hay tours disponibles en este momento</p>
             </div>
-          </div>
+          )}
         </div>
       </section>
 

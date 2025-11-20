@@ -66,8 +66,13 @@ function Footer(){
               </div>
             </div>
           </div>
-          <div className="border-t border-gray-800 mt-8 pt-6 text-center text-gray-400">
-            <p>© 2025 Zona Colonial Santo Domingo. Todos los derechos reservados.</p>
+          <div className="border-t border-gray-800 mt-8 pt-6">
+            <div className="flex justify-between items-center">
+              <p className="text-gray-400">© 2025 Zona Colonial Santo Domingo. Todos los derechos reservados.</p>
+              <a href="/login" className="text-xs text-gray-500 hover:text-gray-300 transition duration-300">
+                Admin
+              </a>
+            </div>
           </div>
         </div>
       </footer>

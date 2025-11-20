@@ -5,6 +5,7 @@ import { useAuthContext } from '../context/AuthContext';
 
 function Login() {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuthContext();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -12,6 +13,17 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirigir si ya está autenticado
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/profile');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,7 +43,7 @@ function Login() {
     }
     if (!formData.password) {
       newErrors.password = 'La contraseña es obligatoria';
-    } else if (formData.password.length < 6) {
+    } else if (formData.password.length < 4) {
       newErrors.password = 'Mínimo 6 caracteres';
     }
     return newErrors;
@@ -52,7 +64,11 @@ function Login() {
       const response = await login(formData.email, formData.password);
       if (response.success) {
         console.log('Login exitoso:', response);
-        navigate('/profile');
+        if (response.user.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/profile');
+        }
       }
     } catch (error) {
       setErrors({ general: error.message || 'Error al iniciar sesión' });

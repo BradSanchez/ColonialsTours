@@ -8,16 +8,27 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = () => {
-      const currentUser = apiService.getCurrentUser();
-      const isAuth = apiService.isAuthenticated();
-      
-      setUser(currentUser);
-      setIsAuthenticated(isAuth);
-      setLoading(false);
-    };
-
-    initAuth();
+    // Verificar token y usuario al cargar
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    
+    if (token && userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+    
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
