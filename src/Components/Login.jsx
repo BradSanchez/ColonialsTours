@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'react-feather';
+import { useAuthContext } from '../context/AuthContext';
 
 function Login() {
   const navigate = useNavigate();
@@ -36,6 +37,8 @@ function Login() {
     return newErrors;
   };
 
+  const { login } = useAuthContext();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validate();
@@ -44,13 +47,18 @@ function Login() {
       return;
     }
     setIsLoading(true);
-    // Simula llamada a API
-    setTimeout(() => {
+    
+    try {
+      const response = await login(formData.email, formData.password);
+      if (response.success) {
+        console.log('Login exitoso:', response);
+        navigate('/profile');
+      }
+    } catch (error) {
+      setErrors({ general: error.message || 'Error al iniciar sesión' });
+    } finally {
       setIsLoading(false);
-      console.log('Login exitoso:', formData);
-      // Aquí integrarías tu lógica de autenticación real
-      navigate('/');
-    }, 1500);
+    }
   };
 
   return (
@@ -126,6 +134,13 @@ function Login() {
                 ¿Olvidaste tu contraseña?
               </a>
             </div>
+
+            {/* Error general */}
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {errors.general}
+              </div>
+            )}
 
             {/* Submit */}
             <button

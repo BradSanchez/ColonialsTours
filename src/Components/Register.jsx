@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, UserPlus } from 'react-feather';
+import { useAuthContext } from '../context/AuthContext';
 
 function Register() {
   const navigate = useNavigate();
@@ -54,6 +55,8 @@ function Register() {
     return newErrors;
   };
 
+  const { register: registerUser } = useAuthContext();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = validate();
@@ -62,13 +65,24 @@ function Register() {
       return;
     }
     setIsLoading(true);
-    // Simula llamada a API
-    setTimeout(() => {
+    
+    try {
+      const userData = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      };
+      
+      const response = await registerUser(userData);
+      if (response.success) {
+        console.log('Registro exitoso:', response);
+        navigate('/profile');
+      }
+    } catch (error) {
+      setErrors({ general: error.message || 'Error al registrar usuario' });
+    } finally {
       setIsLoading(false);
-      console.log('Registro exitoso:', formData);
-      // Aquí integrarías tu lógica de registro real
-      navigate('/login');
-    }, 1500);
+    }
   };
 
   return (
@@ -214,6 +228,13 @@ function Register() {
               </label>
               {errors.acceptTerms && <p className="text-red-500 text-sm mt-1">{errors.acceptTerms}</p>}
             </div>
+
+            {/* Error general */}
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {errors.general}
+              </div>
+            )}
 
             {/* Submit */}
             <button
